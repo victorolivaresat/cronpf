@@ -1,9 +1,8 @@
 
 import type { Metadata } from 'next';
 import { AppProviders } from '@/components/providers/app-providers';
-import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { es } from 'date-fns/locale';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Cron PF',

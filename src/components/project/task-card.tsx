@@ -72,7 +72,11 @@ export function TaskCard({ task, projectId, onEdit, onDelete }: TaskCardProps) {
   const [newSubtask, setNewSubtask] = useState("");
 
   const subtasks = useMemo(() => {
-    return task.subtasks ? Object.entries(task.subtasks).map(([id, subtask]) => ({...(subtask as object), id})) : [];
+    return task.subtasks ? Object.entries(task.subtasks).map(([id, subtask]) => ({
+      id,
+      title: (subtask as any).title,
+      done: (subtask as any).done
+    })) : [];
   }, [task.subtasks]);
 
   const progress = useMemo(() => {
@@ -178,12 +182,12 @@ export function TaskCard({ task, projectId, onEdit, onDelete }: TaskCardProps) {
       </CardContent>
        {task.assignees && task.assignees.length > 0 && (
             <CardFooter>
-                <div className="flex items-center -space-x-2">
+                <div className="flex items-center -space-x-3">
                 <TooltipProvider>
                 {task.assignees.map(email => (
                     <Tooltip key={email}>
                         <TooltipTrigger asChild>
-                            <Avatar className="h-6 w-6 border-2 border-background">
+                            <Avatar className="h-10 w-10 border-2 border-background">
                                 <AvatarFallback>{getInitials(email)}</AvatarFallback>
                             </Avatar>
                         </TooltipTrigger>

@@ -34,7 +34,7 @@ const formSchema = z.object({
   status: z.enum(["pending", "in-progress", "completed"]),
   startDate: z.date({ required_error: "La fecha de inicio es requerida." }),
   endDate: z.date({ required_error: "La fecha de finalización es requerida." }),
-  assignees: z.array(z.string().email("Correo inválido.")).optional(),
+  // assignees: z.array(z.string().email("Correo inválido.")).default([]),
 }).refine(data => data.endDate >= data.startDate, {
   message: "La fecha de finalización debe ser posterior a la fecha de inicio.",
   path: ["endDate"],
@@ -65,14 +65,14 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
       status: task?.status || "pending",
       startDate: task ? new Date(task.startDate) : new Date(),
       endDate: task ? new Date(task.endDate) : new Date(),
-      assignees: task?.assignees || [],
+      // assignees: (task?.assignees || []) as string[],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "assignees",
-  });
+  // const { fields, append, remove } = useFieldArray({
+  //   control: form.control,
+  //   name: "assignees" as any,
+  // });
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     onSubmit({
@@ -80,7 +80,7 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
       description: values.description || "",
       startDate: values.startDate.toISOString(),
       endDate: values.endDate.toISOString(),
-      assignees: values.assignees || [],
+      assignees: task?.assignees || [],
     }, task?.id);
   };
 
@@ -133,13 +133,14 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
         });
 
         if (result.suggestedAssigneeEmail) {
-            const email = result.suggestedAssigneeEmail;
-            if (!form.getValues("assignees")?.includes(email)) {
-                append(email);
-                toast({ title: "Asignatario sugerido", description: `${email} ha sido añadido.`});
-            } else {
-                 toast({ title: "Asignatario ya añadido", description: `${email} ya está en la lista.`});
-            }
+            // const email = result.suggestedAssigneeEmail;
+            // if (!form.getValues("assignees")?.includes(email)) {
+            //     append(email);
+            //     toast({ title: "Asignatario sugerido", description: `${email} ha sido añadido.`});
+            // } else {
+            //      toast({ title: "Asignatario ya añadido", description: `${email} ya está en la lista.`});
+            // }
+            toast({ title: "Funcionalidad de asignatarios temporalmente deshabilitada." });
         }
     } catch (e) {
         console.error(e);
@@ -193,7 +194,7 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
                     Sugerir
                 </Button>
             </div>
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
                 {fields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2">
                         <Input
@@ -211,7 +212,10 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
                     Añadir Asignatario
                 </Button>
             </div>
-             <FormMessage>{form.formState.errors.assignees?.message}</FormMessage>
+             <FormMessage>{form.formState.errors.assignees?.message}</FormMessage> */}
+            <div className="text-sm text-muted-foreground">
+                Funcionalidad de asignatarios temporalmente deshabilitada
+            </div>
         </div>
 
 

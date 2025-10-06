@@ -3,16 +3,16 @@
 
 import { Task } from "@/lib/types";
 import { differenceInDays, format, parseISO, addDays } from "date-fns";
-import { es } from "date-fns/locale";
+import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { ResizableBox } from 'react-resizable';
-import 'react-resizable/css/styles.css';
-import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
-import { useAuth } from "@/hooks/use-auth";
 import { ref, update } from "firebase/database";
+import { useAuth } from "@/hooks/use-auth";
+import { useState, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
-import { useState, useRef } from "react";
+import { es } from "date-fns/locale";
+import 'react-resizable/css/styles.css';
 
 type GanttBarProps = {
   task: Task & { projectId: string };
@@ -102,7 +102,6 @@ export function GanttBar({ task, projectStartDate, totalDays, index, dayWidth }:
                                 axis="x"
                                 minConstraints={[dayWidth, barHeight]}
                                 maxConstraints={[(totalDays - Math.round(position.x / dayWidth)) * dayWidth, barHeight]}
-                                handles={['e']}
                                 handle={<span className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-4 bg-white/50 rounded-full opacity-0 group-hover:opacity-100 cursor-ew-resize" />}
                             >
                                 <div

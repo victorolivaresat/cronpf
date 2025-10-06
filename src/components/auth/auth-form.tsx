@@ -26,22 +26,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { ref, set } from "firebase/database";
 
-const loginSchema = z.object({
+const authFormSchema = z.object({
   email: z.string().email({ message: "Dirección de correo inválida." }),
   password: z
     .string()
     .min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
+  name: z.string().optional(),
 });
-
-const signupSchema = z.object({
-  name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
-  email: z.string().email({ message: "Dirección de correo inválida." }),
-  password: z
-    .string()
-    .min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
-});
-
-const formSchema = z.union([loginSchema, signupSchema]);
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -53,21 +44,36 @@ export function AuthForm({ mode }: AuthFormProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const currentSchema = mode === 'login' ? loginSchema : signupSchema;
+  // Schema dinámico según el modo
+  const dynamicSchema = mode === "signup" 
+    ? authFormSchema.extend({
+        name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." })
+      })
+    : authFormSchema;
 
-  const form = useForm<z.infer<typeof currentSchema>>({
-    resolver: zodResolver(currentSchema),
+  const form = useForm<z.infer<typeof authFormSchema>>({
+    resolver: zodResolver(dynamicSchema),
     defaultValues: {
       email: "",
       password: "",
-      ...(mode === 'signup' && { name: "" }),
+      name: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof authFormSchema>) {
     setIsLoading(true);
     try {
-      if (mode === "signup" && 'name' in values) {
+      if (mode === "signup") {
+        if (!values.name || values.name.trim().length < 2) {
+          toast({ 
+            title: "Error", 
+            description: "El nombre es requerido y debe tener al menos 2 caracteres.",
+            variant: "destructive" 
+          });
+          setIsLoading(false);
+          return;
+        }
+        
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           values.email,
@@ -92,7 +98,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       const redirect = searchParams.get('redirect') || '/dashboard';
       router.push(redirect);
     } catch (error: any) {
-      console.error(error);
+      console.error('Error en autenticación:', error);
       toast({
         title: "Falló la autenticación",
         description: error.message || "Ocurrió un error inesperado.",
@@ -147,7 +153,11 @@ export function AuthForm({ mode }: AuthFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading}
+        >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {mode === "login" ? "Iniciar Sesión" : "Registrarse"}
         </Button>

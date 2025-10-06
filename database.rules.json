@@ -1,21 +1,20 @@
+
 {
   "rules": {
+    ".write": "auth != null",
     "users": {
-      // Any authenticated user can read the users list to find members
       ".read": "auth != null",
+      ".indexOn": ["email"],
       "$uid": {
-        // But a user can only write to their own profile
         ".write": "$uid === auth.uid"
       }
     },
     "projects": {
+      ".read": "auth != null",
+      ".indexOn": "ownerId",
       "$projectId": {
-        // A user can read a project if they are a member
-        ".read": "data.child('members').hasChild(auth.uid)",
-        // A user can write to a project if they are a member
-        ".write": "data.child('members').hasChild(auth.uid)",
-        // Validation for creating new projects
-        ".validate": "newData.hasChildren(['title', 'ownerId', 'members']) && newData.child('ownerId').val() === auth.uid"
+        ".read": "auth != null && (data.child('ownerId').val() === auth.uid || data.child('members').child(auth.uid).exists())",
+        ".write": "auth != null && (data.child('ownerId').val() === auth.uid || data.child('members').child(auth.uid).exists() || (!data.exists() && newData.child('ownerId').val() === auth.uid))"
       }
     }
   }

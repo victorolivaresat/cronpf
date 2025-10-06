@@ -70,8 +70,7 @@ export function UserTasksChart({ tasks, userMap }: UserTasksChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+          <BarChart data={chartData} width={800} height={300} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -96,8 +95,7 @@ export function UserTasksChart({ tasks, userMap }: UserTasksChartProps) {
               <Bar dataKey="pending" stackId="a" fill={chartConfig.pending.color} radius={[0, 0, 0, 0]} />
               <Bar dataKey="in-progress" stackId="a" fill={chartConfig['in-progress'].color} />
               <Bar dataKey="completed" stackId="a" fill={chartConfig.completed.color} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          </BarChart>
         </ChartContainer>
       </CardContent>
     </Card>

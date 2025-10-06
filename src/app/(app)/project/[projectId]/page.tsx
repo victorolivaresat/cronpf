@@ -167,7 +167,7 @@ export default function ProjectPage() {
     return <div className="container py-8 text-center"><h2>Cargando Proyecto...</h2></div>;
   }
 
-  const tasks = project.tasks ? Object.values(project.tasks) : [];
+  const tasks = project.tasks ? Object.entries(project.tasks).map(([id, task]) => ({ ...task, id })) : [];
   const isOwner = user?.uid === project.ownerId;
 
   return (
