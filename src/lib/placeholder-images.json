@@ -1,0 +1,28 @@
+{
+  "placeholderImages": [
+    {
+      "id": "landing-hero",
+      "description": "Hero image for the landing page",
+      "imageUrl": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx0ZWFtJTIwY29sbGFib3JhdGlvbnxlbnwwfHx8fDE3NTk2ODM3Njl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "team collaboration"
+    },
+    {
+      "id": "feature-gantt",
+      "description": "Image showing a gantt chart feature",
+      "imageUrl": "https://images.unsplash.com/photo-1600421014677-c81535dc4669?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Z2FudHQlMjBjaGFydHxlbnwwfHx8fDE3NTk3NjAyNTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gantt chart"
+    },
+    {
+      "id": "feature-tasks",
+      "description": "Image showing a task board",
+      "imageUrl": "https://images.unsplash.com/photo-1678846851706-abb02d1574aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx0YXNrJTIwYm9hcmR8ZW58MHx8fHwxNzU5NzQ5OTczfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "task board"
+    },
+    {
+      "id": "feature-ai",
+      "description": "Image representing AI insights",
+      "imageUrl": "https://images.unsplash.com/photo-1591696331111-ef9586a5b17a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlfGVufDB8fHx8MTc1OTcyMjIzMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "artificial intelligence"
+    }
+  ]
+}
