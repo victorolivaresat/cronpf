@@ -7,7 +7,7 @@ import { onValue, ref, update, push, set, remove, get, query, orderByChild, equa
 import { db } from "@/lib/firebase";
 import { Project, Task, UserProfile } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ListTodo, BarChartHorizontalBig, Plus, Pencil, Users } from "lucide-react";
+import { ListTodo, BarChartHorizontalBig, Plus, Pencil, Users, FileBarChart } from "lucide-react";
 import ProjectLoading from "./loading";
 import { ProjectHeader } from "@/components/project/project-header";
 import { TaskList } from "@/components/project/task-list";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { TaskForm } from "@/components/project/task-form";
 import { EditProjectForm } from "@/components/project/edit-project-form";
+import { ProjectReports } from "@/components/project/project-reports";
 import { useParams, useRouter } from "next/navigation";
 import { ManageMembersForm } from "@/components/project/manage-members-form";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,7 @@ export default function ProjectPage() {
   const [isEditProjectFormOpen, setIsEditProjectFormOpen] = useState(false);
   const [isMembersFormOpen, setIsMembersFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [activeTab, setActiveTab] = useState("tasks");
 
   useEffect(() => {
     if (!user || !projectId) {
@@ -158,6 +160,10 @@ export default function ProjectPage() {
     setIsTaskFormOpen(true);
   }
 
+  const handleShowReports = () => {
+    setActiveTab("reports");
+  }
+
   if (loading) {
     return <ProjectLoading />;
   }
@@ -217,11 +223,12 @@ export default function ProjectPage() {
         </div>
       </ProjectHeader>
 
-      <Tabs defaultValue="tasks" className="mt-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
         <div className="flex justify-between items-center mb-4">
           <TabsList>
             <TabsTrigger value="tasks"><ListTodo className="w-4 h-4 mr-2" />Tareas</TabsTrigger>
             <TabsTrigger value="gantt"><BarChartHorizontalBig className="w-4 h-4 mr-2" />Gantt</TabsTrigger>
+            <TabsTrigger value="reports"><FileBarChart className="w-4 h-4 mr-2" />Reportes</TabsTrigger>
           </TabsList>
           <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
             <DialogTrigger asChild>
@@ -249,10 +256,14 @@ export default function ProjectPage() {
             onEditTask={openEditTaskForm} 
             onDeleteTask={handleDeleteTask}
             projectId={project.id}
+            onShowReports={handleShowReports}
           />
         </TabsContent>
         <TabsContent value="gantt">
           <GanttChart project={project} tasks={tasks} />
+        </TabsContent>
+        <TabsContent value="reports">
+          <ProjectReports project={project} tasks={tasks} />
         </TabsContent>
       </Tabs>
     </div>
