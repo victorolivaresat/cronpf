@@ -3,13 +3,13 @@
 # ===============================
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+WORKDIR /cronpf
 
 # Copiar archivos de configuración e instalación
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copiar el resto del código
+# Copiar todo el código fuente
 COPY . .
 
 # Construir el proyecto Next.js
@@ -20,24 +20,24 @@ RUN npm run build
 # ===============================
 FROM node:20-alpine AS runner
 
-WORKDIR /app
+WORKDIR /cronpf
 
-# Copiar los archivos necesarios del builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./next.config.mjs
-COPY --from=builder /app/tailwind.config.ts ./tailwind.config.ts
-COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
+# Copiar solo lo necesario desde la etapa anterior
+COPY --from=builder /cronpf/package*.json ./
+COPY --from=builder /cronpf/.next ./.next
+
+# Si existe carpeta public, se copia (seguro)
+# Puedes descomentar si más adelante agregas assets públicos:
+# COPY --from=builder /cronpf/public ./public
 
 # Instalar solo dependencias de producción
 RUN npm install --production --legacy-peer-deps
 
-# Establecer variables de entorno para Next.js
+# Variables de entorno
 ENV NODE_ENV=production
 ENV PORT=9002
 
-# Exponer el puerto del servidor
+# Exponer puerto
 EXPOSE 9002
 
 # Comando de inicio
