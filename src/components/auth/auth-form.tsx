@@ -26,7 +26,7 @@ import { Loader2 } from 'lucide-react';
 import { ref, set } from 'firebase/database';
 
 const authFormSchema = z.object({
-  email: z.string().email({ message: 'Dirección de correo inválida.' }),
+  email: z.string().email({ message: 'Direccion de correo invalida.' }),
   password: z
     .string()
     .min(6, { message: 'La contraseña debe tener al menos 6 caracteres.' }),
@@ -51,7 +51,7 @@ function AuthFormContent({ mode }: AuthFormProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  // Schema dinámico según el modo
+  // Schema dinamico segun el modo
   const dynamicSchema =
     mode === 'signup'
       ? authFormSchema.extend({
@@ -101,18 +101,18 @@ function AuthFormContent({ mode }: AuthFormProps) {
           email: user.email,
         });
 
-        toast({ title: '¡Cuenta creada con éxito!' });
+        toast({ title: '¡Cuenta creada con exito!' });
       } else {
         await signInWithEmailAndPassword(auth, values.email, values.password);
-        toast({ title: '¡Has iniciado sesión con éxito!' });
+        toast({ title: '¡Has iniciado sesion con exito!' });
       }
       const redirect = searchParams.get('redirect') || '/dashboard';
       router.push(redirect);
     } catch (error: any) {
-      console.error('Error en autenticación:', error);
+      console.error('Error en autenticacion:', error);
       toast({
-        title: 'Falló la autenticación',
-        description: error.message || 'Ocurrió un error inesperado.',
+        title: 'Fallo la autenticacion',
+        description: error.message || 'Ocurrio un error inesperado.',
         variant: 'destructive',
       });
     } finally {
@@ -143,7 +143,7 @@ function AuthFormContent({ mode }: AuthFormProps) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Correo Electrónico</FormLabel>
+              <FormLabel>Correo Electronico</FormLabel>
               <FormControl>
                 <Input placeholder="nombre@ejemplo.com" {...field} />
               </FormControl>
@@ -166,7 +166,7 @@ function AuthFormContent({ mode }: AuthFormProps) {
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {mode === 'login' ? 'Iniciar Sesión' : 'Registrarse'}
+          {mode === 'login' ? 'Iniciar Sesion' : 'Registrarse'}
         </Button>
       </form>
     </Form>

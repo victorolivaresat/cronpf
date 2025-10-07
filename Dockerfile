@@ -1,22 +1,22 @@
 # ===============================
-# Etapa 1: Construcción
+# Etapa 1: Construccion
 # ===============================
 FROM node:20-alpine AS builder
 
 WORKDIR /cronpf
 
-# Copiar archivos de configuración e instalación
+# Copiar archivos de configuracion e instalacion
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copiar todo el código fuente
+# Copiar todo el codigo fuente
 COPY . .
 
 # Construir el proyecto Next.js
 RUN npm run build
 
 # ===============================
-# Etapa 2: Servidor de producción
+# Etapa 2: Servidor de produccion
 # ===============================
 FROM node:20-alpine AS runner
 
@@ -27,10 +27,10 @@ COPY --from=builder /cronpf/package*.json ./
 COPY --from=builder /cronpf/.next ./.next
 
 # Si existe carpeta public, se copia (seguro)
-# Puedes descomentar si más adelante agregas assets públicos:
+# Puedes descomentar si mas adelante agregas assets publicos:
 # COPY --from=builder /cronpf/public ./public
 
-# Instalar solo dependencias de producción
+# Instalar solo dependencias de produccion
 RUN npm install --production --legacy-peer-deps
 
 # Variables de entorno
