@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  cronpf:
+    build: .
+    container_name: cron-pf
+    ports:
+      - "9002:9002"
+    env_file:
+      - .env.local
+    restart: unless-stopped
