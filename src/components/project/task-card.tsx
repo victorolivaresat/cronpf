@@ -78,6 +78,7 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
   const { user } = useAuth();
   const [newSubtask, setNewSubtask] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [wasTextCorrected, setWasTextCorrected] = useState(false);
 
   const expanded = forceExpanded || isExpanded;
 
@@ -100,13 +101,103 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
     const taskRef = ref(db, `projects/${projectId}/tasks/${task.id}`);
     await update(taskRef, { status: newStatus });
   };
+
+  // Función para corregir texto automáticamente
+  const correctText = (text: string): string => {
+    if (!text.trim()) return text;
+
+    let correctedText = text.trim();
+
+    // 1. Capitalizar primera letra
+    correctedText = correctedText.charAt(0).toUpperCase() + correctedText.slice(1);
+
+    // 2. Capitalizar después de puntos
+    correctedText = correctedText.replace(/\.\s+([a-z])/g, (match, letter) => {
+      return '. ' + letter.toUpperCase();
+    });
+
+    // 3. Capitalizar nombres propios comunes en español
+    const properNouns = [
+      // Nombres comunes
+      'juan', 'maría', 'carlos', 'ana', 'luis', 'carmen', 'josé', 'antonio', 'manuel', 'francisco',
+      'david', 'daniel', 'rafael', 'miguel', 'alejandro', 'fernando', 'sergio', 'pablo', 'jorge',
+      'andrés', 'alberto', 'roberto', 'ricardo', 'eduardo', 'raúl', 'víctor', 'ángel', 'ramón',
+      
+      // Apellidos comunes
+      'garcía', 'rodríguez', 'gonzález', 'fernández', 'lópez', 'martínez', 'sánchez', 'pérez',
+      'gómez', 'martín', 'jiménez', 'ruiz', 'hernández', 'díaz', 'moreno', 'álvarez', 'muñoz',
+      'romero', 'navarro', 'torres', 'domínguez', 'vázquez', 'ramos', 'gil', 'ramírez', 'serrano',
+      
+      // Lugares comunes
+      'españa', 'madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao', 'málaga', 'murcia',
+      'palma', 'gran canaria', 'alicante', 'córdoba', 'valladolid', 'vigo', 'gijón', 'eixample',
+      'hospitalet', 'coruña', 'vitoria', 'granada', 'elche', 'oviedo', 'santa cruz', 'pamplona',
+      'almería', 'leganés', 'donostia', 'burgos', 'albacete', 'santander', 'castellón', 'alcorcón',
+      
+      // Países y continentes
+      'méxico', 'argentina', 'colombia', 'perú', 'venezuela', 'chile', 'ecuador', 'guatemala',
+      'cuba', 'bolivia', 'república dominicana', 'honduras', 'paraguay', 'nicaragua', 'costa rica',
+      'panamá', 'uruguay', 'salvador', 'europa', 'américa', 'asia', 'áfrica', 'oceanía',
+      
+      // Días de la semana
+      'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
+      
+      // Meses
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
+      'septiembre', 'octubre', 'noviembre', 'diciembre',
+      
+      // Tecnologías comunes
+      'javascript', 'typescript', 'python', 'java', 'react', 'angular', 'vue', 'node',
+      'express', 'mongodb', 'mysql', 'postgresql', 'firebase', 'aws', 'azure', 'google',
+      'microsoft', 'apple', 'facebook', 'twitter', 'instagram', 'linkedin', 'github',
+      'gitlab', 'bitbucket', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'
+    ];
+
+    properNouns.forEach(noun => {
+      const regex = new RegExp(`\\b${noun}\\b`, 'gi');
+      correctedText = correctedText.replace(regex, (match) => {
+        return match.charAt(0).toUpperCase() + match.slice(1).toLowerCase();
+      });
+    });
+
+    // 4. Corregir espacios múltiples
+    correctedText = correctedText.replace(/\s+/g, ' ');
+
+    // 5. Agregar punto final si no tiene puntuación
+    if (!/[.!?]$/.test(correctedText) && correctedText.length > 0) {
+      correctedText += '.';
+    }
+
+    // 6. Corregir espacios antes de signos de puntuación
+    correctedText = correctedText.replace(/\s+([,.!?;:])/g, '$1');
+
+    // 7. Agregar espacio después de signos de puntuación si no lo hay
+    correctedText = correctedText.replace(/([,.!?;:])([A-Za-z])/g, '$1 $2');
+
+    // 8. Corregir mayúsculas después de signos de exclamación e interrogación
+    correctedText = correctedText.replace(/([!?])\s+([a-z])/g, (match, punct, letter) => {
+      return punct + ' ' + letter.toUpperCase();
+    });
+
+    return correctedText;
+  };
   
   const handleAddSubtask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newSubtask.trim()) return;
+    
+    // Corregir el texto antes de guardarlo
+    const correctedTitle = correctText(newSubtask);
+    
+    // Mostrar indicador si el texto fue corregido
+    if (correctedTitle !== newSubtask.trim()) {
+      setWasTextCorrected(true);
+      setTimeout(() => setWasTextCorrected(false), 3000); // Ocultar después de 3 segundos
+    }
+    
     const subtasksRef = ref(db, `projects/${projectId}/tasks/${task.id}/subtasks`);
     const newSubtaskRef = push(subtasksRef);
-    await set(newSubtaskRef, { title: newSubtask, done: false });
+    await set(newSubtaskRef, { title: correctedTitle, done: false });
     setNewSubtask("");
   }
 
@@ -200,13 +291,20 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Subtareas ({subtasks.length})</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-muted-foreground">Subtareas ({subtasks.length})</h4>
+                    {wasTextCorrected && (
+                      <span className="text-xs text-green-600 bg-green-50 dark:bg-green-950/20 px-2 py-1 rounded">
+                        ✓ Texto corregido automáticamente
+                      </span>
+                    )}
+                  </div>
                   {subtasks.map((subtask) => (
                     <SubtaskItem key={subtask.id} subtask={subtask} taskId={task.id} projectId={projectId} />
                   ))}
                   <form onSubmit={handleAddSubtask} className="flex gap-2">
                     <Input
-                      placeholder="Añadir una nueva subtarea..."
+                      placeholder="Añadir subtarea (se corregirá automáticamente)..."
                       value={newSubtask}
                       onChange={(e) => setNewSubtask(e.target.value)}
                       className="h-7 text-xs"
@@ -345,13 +443,20 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Subtareas ({subtasks.length})</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-muted-foreground">Subtareas ({subtasks.length})</h4>
+                  {wasTextCorrected && (
+                    <span className="text-xs text-green-600 bg-green-50 dark:bg-green-950/20 px-2 py-1 rounded">
+                      ✓ Texto corregido automáticamente
+                    </span>
+                  )}
+                </div>
                 {subtasks.map((subtask) => (
                   <SubtaskItem key={subtask.id} subtask={subtask} taskId={task.id} projectId={projectId} />
                 ))}
                 <form onSubmit={handleAddSubtask} className="flex gap-2">
                   <Input
-                    placeholder="Añadir una nueva subtarea..."
+                    placeholder="Añadir subtarea (se corregirá automáticamente)..."
                     value={newSubtask}
                     onChange={(e) => setNewSubtask(e.target.value)}
                     className="h-8"
