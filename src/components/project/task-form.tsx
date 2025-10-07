@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ const formSchema = z.object({
   status: z.enum(["pending", "in-progress", "completed"]),
   startDate: z.date({ required_error: "La fecha de inicio es requerida." }),
   endDate: z.date({ required_error: "La fecha de finalización es requerida." }),
-  // assignees: z.array(z.string().email("Correo inválido.")).default([]),
+  assignees: z.array(z.object({ email: z.string().email("Correo inválido.") })).default([]),
 }).refine(data => data.endDate >= data.startDate, {
   message: "La fecha de finalización debe ser posterior a la fecha de inicio.",
   path: ["endDate"],
@@ -65,14 +65,14 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
       status: task?.status || "pending",
       startDate: task ? new Date(task.startDate) : new Date(),
       endDate: task ? new Date(task.endDate) : new Date(),
-      // assignees: (task?.assignees || []) as string[],
+      assignees: (task?.assignees || []).map(email => ({ email })),
     },
   });
 
-  // const { fields, append, remove } = useFieldArray({
-  //   control: form.control,
-  //   name: "assignees" as any,
-  // });
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "assignees",
+  });
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     onSubmit({
@@ -80,7 +80,7 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
       description: values.description || "",
       startDate: values.startDate.toISOString(),
       endDate: values.endDate.toISOString(),
-      assignees: task?.assignees || [],
+      assignees: values.assignees.map(item => item.email).filter(email => email.trim() !== ""),
     }, task?.id);
   };
 
@@ -133,14 +133,16 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
         });
 
         if (result.suggestedAssigneeEmail) {
-            // const email = result.suggestedAssigneeEmail;
-            // if (!form.getValues("assignees")?.includes(email)) {
-            //     append(email);
-            //     toast({ title: "Asignatario sugerido", description: `${email} ha sido añadido.`});
-            // } else {
-            //      toast({ title: "Asignatario ya añadido", description: `${email} ya está en la lista.`});
-            // }
-            toast({ title: "Funcionalidad de asignatarios temporalmente deshabilitada." });
+            const email = result.suggestedAssigneeEmail;
+            const currentAssignees = form.getValues("assignees");
+            const emailExists = currentAssignees.some(assignee => assignee.email === email);
+            
+            if (!emailExists) {
+                append({ email });
+                toast({ title: "Asignatario sugerido", description: `${email} ha sido añadido.`});
+            } else {
+                 toast({ title: "Asignatario ya añadido", description: `${email} ya está en la lista.`});
+            }
         }
     } catch (e) {
         console.error(e);
@@ -194,28 +196,31 @@ export function TaskForm({ onSubmit, project, task }: TaskFormProps) {
                     Sugerir
                 </Button>
             </div>
-            {/* <div className="space-y-2">
+            <div className="space-y-2">
                 {fields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2">
-                        <Input
-                            {...form.register(`assignees.${index}` as const)}
-                            placeholder="correo@ejemplo.com"
-                            className="h-9"
+                        <Controller
+                            control={form.control}
+                            name={`assignees.${index}.email`}
+                            render={({ field: controllerField }) => (
+                                <Input
+                                    {...controllerField}
+                                    placeholder="correo@ejemplo.com"
+                                    className="h-9"
+                                />
+                            )}
                         />
                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                             <X className="w-4 h-4" />
                         </Button>
                     </div>
                 ))}
-                 <Button type="button" variant="outline" size="sm" onClick={() => append("")}>
+                 <Button type="button" variant="outline" size="sm" onClick={() => append({ email: "" })}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Añadir Asignatario
                 </Button>
             </div>
-             <FormMessage>{form.formState.errors.assignees?.message}</FormMessage> */}
-            <div className="text-sm text-muted-foreground">
-                Funcionalidad de asignatarios temporalmente deshabilitada
-            </div>
+             <FormMessage>{form.formState.errors.assignees?.message}</FormMessage>
         </div>
 
 

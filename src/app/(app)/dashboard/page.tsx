@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showSeedDialog, setShowSeedDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [visibleProjects, setVisibleProjects] = useState(6);
+
+  const PROJECTS_PER_PAGE = 6;
 
   const isAdmin = user?.email === 'victor.olivares@apuestatotal.com';
 
@@ -54,22 +57,29 @@ export default function DashboardPage() {
   const { allTasks, userMap } = useMemo(() => {
     const tasks: (Task & { projectName: string })[] = [];
     const users: Record<string, string> = {};
-    
+
     projects.forEach(p => {
-        const projectTasks = p.tasks ? Object.entries(p.tasks).map(([id, task])=> ({id, ...task as Omit<Task, 'id'>})) : [];
-        tasks.push(...projectTasks.map(t => ({ ...t, projectName: p.title })));
-        
-        if (p.members) {
-            Object.values(p.members).forEach(member => {
-                if (!users[member.email] && member.name) {
-                    users[member.email] = member.name;
-                }
-            });
-        }
+      const projectTasks = p.tasks ? Object.entries(p.tasks).map(([id, task]) => ({ id, ...task as Omit<Task, 'id'> })) : [];
+      tasks.push(...projectTasks.map(t => ({ ...t, projectName: p.title })));
+
+      if (p.members) {
+        Object.values(p.members).forEach(member => {
+          if (!users[member.email] && member.name) {
+            users[member.email] = member.name;
+          }
+        });
+      }
     });
 
     return { allTasks: tasks, userMap: users };
   }, [projects]);
+
+  const displayedProjects = projects.slice(0, visibleProjects);
+  const hasMoreProjects = projects.length > visibleProjects;
+
+  const loadMoreProjects = () => {
+    setVisibleProjects(prev => prev + PROJECTS_PER_PAGE);
+  };
 
 
   const handleCreateProject = async (data: any) => {
@@ -87,25 +97,25 @@ export default function DashboardPage() {
       [user.uid]: { email: user.email, role: 'owner', name: user.displayName || user.email }
     };
     userUpdates[`/users/${user.uid}/projectIds/${projectId}`] = true;
-    
-    if (memberEmails) {
-        const emails = memberEmails.split(',').map((e: string) => e.trim()).filter((e: string) => e);
-        for (const email of emails) {
-            const usersRef = ref(db, 'users');
-            const snapshot = await get(query(usersRef, orderByChild('email'), equalTo(email)));
 
-            if (snapshot.exists()) {
-                const foundUser = snapshot.val();
-                const userId = Object.keys(foundUser)[0];
-                const userData = foundUser[userId];
-                if (!members[userId]) {
-                    members[userId] = { email, role: 'member', name: userData.name || email };
-                    userUpdates[`/users/${userId}/projectIds/${projectId}`] = true;
-                }
-            } else {
-                toast({ title: `Usuario no encontrado: ${email}`, variant: "destructive" });
-            }
+    if (memberEmails) {
+      const emails = memberEmails.split(',').map((e: string) => e.trim()).filter((e: string) => e);
+      for (const email of emails) {
+        const usersRef = ref(db, 'users');
+        const snapshot = await get(query(usersRef, orderByChild('email'), equalTo(email)));
+
+        if (snapshot.exists()) {
+          const foundUser = snapshot.val();
+          const userId = Object.keys(foundUser)[0];
+          const userData = foundUser[userId];
+          if (!members[userId]) {
+            members[userId] = { email, role: 'member', name: userData.name || email };
+            userUpdates[`/users/${userId}/projectIds/${projectId}`] = true;
+          }
+        } else {
+          toast({ title: `Usuario no encontrado: ${email}`, variant: "destructive" });
         }
+      }
     }
 
     const newProject: Omit<Project, 'id'> = {
@@ -120,13 +130,13 @@ export default function DashboardPage() {
     setIsDialogOpen(false);
     toast({ title: "¡Proyecto creado con éxito!" });
   };
-  
+
   const handleSeedDatabase = async () => {
     if (!user) return;
     try {
       await seedDatabase(user.uid, user.email || '', user.displayName || '');
       toast({ title: "¡Datos de ejemplo cargados con éxito!" });
-    } catch(e) {
+    } catch (e) {
       console.error(e);
       toast({ title: "Error al cargar los datos de ejemplo.", variant: 'destructive' });
     }
@@ -137,7 +147,7 @@ export default function DashboardPage() {
     try {
       // Remove all projects
       await remove(ref(db, 'projects'));
-      
+
       setProjects([]);
       toast({ title: "La base de datos ha sido limpiada." });
     } catch (e) {
@@ -151,7 +161,7 @@ export default function DashboardPage() {
       toast({ title: "Acción cancelada", description: "Se requiere contraseña.", variant: 'destructive' });
       return;
     }
-    
+
     try {
       const credential = EmailAuthProvider.credential(user.email, password);
       if (auth.currentUser) {
@@ -174,16 +184,19 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="container py-8">
-          <div className="mb-8 space-y-4">
-              <Skeleton className="h-10 w-1/3" />
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                  {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
-              </div>
-              <div className="grid gap-6 lg:grid-cols-1">
-                   <Skeleton className="h-80 rounded-lg" />
-                   <Skeleton className="h-80 rounded-lg" />
-              </div>
+        <div className="mb-8 space-y-4">
+          <Skeleton className="h-10 w-1/3" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
           </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Skeleton className="h-80 rounded-lg" />
+            <Skeleton className="h-80 rounded-lg" />
+          </div>
+          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
+          </div>
+        </div>
       </div>
     )
   }
@@ -193,67 +206,76 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <h1 className="font-headline text-3xl font-bold">Panel de Control</h1>
         <div className="flex items-center gap-2">
-            {isAdmin && (
-              <>
-                <ActionConfirmationDialog
-                  open={showSeedDialog}
-                  onOpenChange={setShowSeedDialog}
-                  onConfirm={(password) => handleAdminAction('seed', password)}
-                  title="¿Cargar Datos de Ejemplo?"
-                  description="Esta acción llenará la base de datos con proyectos y tareas de ejemplo. Para confirmar, por favor ingresa tu contraseña."
-                  triggerButton={
-                    <Button variant="outline"><Dna className="mr-2 h-4 w-4" /> Cargar Datos de Ejemplo</Button>
-                  }
-                />
-                 <ActionConfirmationDialog
-                  open={showClearDialog}
-                  onOpenChange={setShowClearDialog}
-                  onConfirm={(password) => handleAdminAction('clear', password)}
-                  title="¿Limpiar la Base de Datos?"
-                  description="¡ADVERTENCIA! Esta acción eliminará permanentemente TODOS los proyectos y tareas. Para confirmar, por favor ingresa tu contraseña."
-                  variant="destructive"
-                  triggerButton={
-                     <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Limpiar Datos</Button>
-                  }
-                />
-              </>
-            )}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          {isAdmin && (
+            <>
+              <ActionConfirmationDialog
+                open={showSeedDialog}
+                onOpenChange={setShowSeedDialog}
+                onConfirm={(password) => handleAdminAction('seed', password)}
+                title="¿Cargar Datos de Ejemplo?"
+                description="Esta acción llenará la base de datos con proyectos y tareas de ejemplo. Para confirmar, por favor ingresa tu contraseña."
+                triggerButton={
+                  <Button variant="outline"><Dna className="mr-2 h-4 w-4" /> Cargar Datos de Ejemplo</Button>
+                }
+              />
+              <ActionConfirmationDialog
+                open={showClearDialog}
+                onOpenChange={setShowClearDialog}
+                onConfirm={(password) => handleAdminAction('clear', password)}
+                title="¿Limpiar la Base de Datos?"
+                description="¡ADVERTENCIA! Esta acción eliminará permanentemente TODOS los proyectos y tareas. Para confirmar, por favor ingresa tu contraseña."
+                variant="destructive"
+                triggerButton={
+                  <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Limpiar Datos</Button>
+                }
+              />
+            </>
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-                <Button>
+              <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Proyecto
-                </Button>
+              </Button>
             </DialogTrigger>
             <DialogContent>
-                <DialogHeader>
+              <DialogHeader>
                 <DialogTitle className="font-headline">Crear un Nuevo Proyecto</DialogTitle>
-                </DialogHeader>
-                <CreateProjectForm onSubmit={handleCreateProject} />
+              </DialogHeader>
+              <CreateProjectForm onSubmit={handleCreateProject} />
             </DialogContent>
-            </Dialog>
+          </Dialog>
         </div>
       </div>
 
       {projects.length > 0 ? (
         <div className="space-y-8">
           <DashboardSummary projects={projects} tasks={allTasks} />
-          
-          <div className="grid gap-8 lg:grid-cols-1">
-            <UserTasksChart tasks={allTasks} userMap={userMap} />
-          </div>
 
-          <div className="grid gap-8 lg:grid-cols-1">
+          <div className="grid gap-8 lg:grid-cols-2">
+            <UserTasksChart tasks={allTasks} userMap={userMap} />
             <UpcomingTasks tasks={allTasks} />
           </div>
 
           <div>
             <h2 className="font-headline text-2xl font-bold mb-4">Tus Proyectos</h2>
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {projects.map((project) => (
+              {displayedProjects.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
             </div>
+            
+            {hasMoreProjects && (
+              <div className="flex justify-center mt-6">
+                <Button 
+                  variant="outline" 
+                  onClick={loadMoreProjects}
+                  className="px-8"
+                >
+                  Cargar más proyectos
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       ) : (
