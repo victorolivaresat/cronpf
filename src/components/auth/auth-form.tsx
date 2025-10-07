@@ -1,11 +1,10 @@
+'use client';
 
-"use client";
-
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
+import { Suspense, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -13,74 +12,86 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-} from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { ref, set } from "firebase/database";
+} from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { ref, set } from 'firebase/database';
 
 const authFormSchema = z.object({
-  email: z.string().email({ message: "Dirección de correo inválida." }),
+  email: z.string().email({ message: 'Dirección de correo inválida.' }),
   password: z
     .string()
-    .min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
+    .min(6, { message: 'La contraseña debe tener al menos 6 caracteres.' }),
   name: z.string().optional(),
 });
 
 type AuthFormProps = {
-  mode: "login" | "signup";
+  mode: 'login' | 'signup';
 };
 
 export function AuthForm({ mode }: AuthFormProps) {
+  return (
+    <Suspense fallback={<div>Cargando formulario...</div>}>
+      <AuthFormContent mode={mode} />
+    </Suspense>
+  );
+}
+
+function AuthFormContent({ mode }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
   // Schema dinámico según el modo
-  const dynamicSchema = mode === "signup" 
-    ? authFormSchema.extend({
-        name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." })
-      })
-    : authFormSchema;
+  const dynamicSchema =
+    mode === 'signup'
+      ? authFormSchema.extend({
+          name: z
+            .string()
+            .min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
+        })
+      : authFormSchema;
 
   const form = useForm<z.infer<typeof authFormSchema>>({
     resolver: zodResolver(dynamicSchema),
     defaultValues: {
-      email: "",
-      password: "",
-      name: "",
+      email: '',
+      password: '',
+      name: '',
     },
   });
 
   async function onSubmit(values: z.infer<typeof authFormSchema>) {
     setIsLoading(true);
     try {
-      if (mode === "signup") {
+      if (mode === 'signup') {
         if (!values.name || values.name.trim().length < 2) {
-          toast({ 
-            title: "Error", 
-            description: "El nombre es requerido y debe tener al menos 2 caracteres.",
-            variant: "destructive" 
+          toast({
+            title: 'Error',
+            description:
+              'El nombre es requerido y debe tener al menos 2 caracteres.',
+            variant: 'destructive',
           });
           setIsLoading(false);
           return;
         }
-        
+
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           values.email,
           values.password
         );
         const user = userCredential.user;
-        
+
         // Update Firebase Auth profile
         await updateProfile(user, { displayName: values.name });
 
@@ -90,19 +101,19 @@ export function AuthForm({ mode }: AuthFormProps) {
           email: user.email,
         });
 
-        toast({ title: "¡Cuenta creada con éxito!" });
+        toast({ title: '¡Cuenta creada con éxito!' });
       } else {
         await signInWithEmailAndPassword(auth, values.email, values.password);
-        toast({ title: "¡Has iniciado sesión con éxito!" });
+        toast({ title: '¡Has iniciado sesión con éxito!' });
       }
       const redirect = searchParams.get('redirect') || '/dashboard';
       router.push(redirect);
     } catch (error: any) {
       console.error('Error en autenticación:', error);
       toast({
-        title: "Falló la autenticación",
-        description: error.message || "Ocurrió un error inesperado.",
-        variant: "destructive",
+        title: 'Falló la autenticación',
+        description: error.message || 'Ocurrió un error inesperado.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -113,19 +124,19 @@ export function AuthForm({ mode }: AuthFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {mode === 'signup' && (
-             <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Tu nombre" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre</FormLabel>
+                <FormControl>
+                  <Input placeholder="Tu nombre" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
         <FormField
           control={form.control}
@@ -153,13 +164,9 @@ export function AuthForm({ mode }: AuthFormProps) {
             </FormItem>
           )}
         />
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isLoading}
-        >
+        <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {mode === "login" ? "Iniciar Sesión" : "Registrarse"}
+          {mode === 'login' ? 'Iniciar Sesión' : 'Registrarse'}
         </Button>
       </form>
     </Form>
