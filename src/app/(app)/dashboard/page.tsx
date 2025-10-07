@@ -181,6 +181,41 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteProject = async (projectId: string) => {
+    if (!user) return;
+
+    try {
+      // Verificar que el usuario sea el owner del proyecto
+      const project = projects.find(p => p.id === projectId);
+      if (!project) {
+        toast({ title: "Error", description: "Proyecto no encontrado.", variant: 'destructive' });
+        return;
+      }
+
+      if (project.ownerId !== user.uid) {
+        toast({ title: "Sin permisos", description: "Solo el creador del proyecto puede eliminarlo.", variant: 'destructive' });
+        return;
+      }
+
+      // Eliminar el proyecto de la base de datos
+      await remove(ref(db, `projects/${projectId}`));
+      
+      // Remover el proyecto de todos los usuarios que lo tenían
+      if (project.members) {
+        const userUpdates: { [key: string]: null } = {};
+        Object.keys(project.members).forEach(userId => {
+          userUpdates[`/users/${userId}/projectIds/${projectId}`] = null;
+        });
+        await update(ref(db), userUpdates);
+      }
+
+      toast({ title: "Proyecto eliminado", description: "El proyecto ha sido eliminado exitosamente." });
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast({ title: "Error", description: "No se pudo eliminar el proyecto.", variant: 'destructive' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="container py-8">
@@ -261,7 +296,12 @@ export default function DashboardPage() {
             <h2 className="font-headline text-2xl font-bold mb-4">Tus Proyectos</h2>
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {displayedProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard 
+                  key={project.id} 
+                  project={project} 
+                  onDelete={handleDeleteProject}
+                  currentUserId={user?.uid}
+                />
               ))}
             </div>
             
