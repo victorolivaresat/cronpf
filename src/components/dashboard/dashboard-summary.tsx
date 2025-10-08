@@ -26,7 +26,11 @@ export function DashboardSummary({ projects, tasks }: DashboardSummaryProps) {
   
   const overdueTasks = useMemo(() => {
     const now = new Date();
-    return tasks.filter(t => t.status !== 'completed' && new Date(t.endDate) < now).length;
+    return tasks.filter(t => {
+      if (t.status === 'completed') return false;
+      const end = new Date(t.endDate);
+      return end < now && !(end.getDate() === now.getDate() && end.getMonth() === now.getMonth() && end.getFullYear() === now.getFullYear());
+    }).length;
   }, [tasks]);
 
   return (
