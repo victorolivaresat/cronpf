@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Task, TaskStatus } from "@/lib/types";
@@ -29,11 +28,14 @@ import {
   Trash2,
   Plus,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Loader2 
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
+import { enhanceSubtaskText } from "@/ai/flows/enhance-subtask-text";
 import { SubtaskItem } from "./subtask-item";
 import { ref, update, set, push } from "firebase/database";
 import { db } from "@/lib/firebase";
@@ -66,28 +68,41 @@ const statusText: Record<TaskStatus, string> = {
 };
 
 const getInitials = (email: string = "") => {
-    const name = email.split('@')[0];
-    const nameParts = name.split(/[._-]/);
-    if (nameParts.length > 1) {
-        return `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
+  const name = email.split('@')[0];
+  const nameParts = name.split(/[._-]/);
+  if (nameParts.length > 1) {
+    return `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
 }
 
-export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = false, isCompactView = false, isTwoColumnLayout = false, isKanbanView = false }: TaskCardProps) {
+export function TaskCard({
+  task,
+  projectId,
+  onEdit,
+  onDelete,
+  forceExpanded = false,
+  isCompactView = false,
+  isTwoColumnLayout = false,
+  isKanbanView = false
+}: TaskCardProps) {
+
   const { user } = useAuth();
   const [newSubtask, setNewSubtask] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const [wasTextCorrected, setWasTextCorrected] = useState(false);
+  const [isLoadingSubtask, setIsLoadingSubtask] = useState(false);
 
   const expanded = forceExpanded || isExpanded;
 
   const subtasks = useMemo(() => {
-    return task.subtasks ? Object.entries(task.subtasks).map(([id, subtask]) => ({
-      id,
-      title: (subtask as any).title,
-      done: (subtask as any).done
-    })) : [];
+    return task.subtasks
+      ? Object.entries(task.subtasks).map(([id, subtask]) => ({
+        id,
+        title: (subtask as any).title,
+        done: (subtask as any).done
+      }))
+      : [];
   }, [task.subtasks]);
 
   const progress = useMemo(() => {
@@ -102,254 +117,51 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
     await update(taskRef, { status: newStatus });
   };
 
-  // Función para corregir texto automáticamente
-  const correctText = (text: string): string => {
-    if (!text.trim()) return text;
-
-    let correctedText = text.trim();
-
-    // 1. Capitalizar primera letra
-    correctedText = correctedText.charAt(0).toUpperCase() + correctedText.slice(1);
-
-    // 2. Capitalizar después de puntos
-    correctedText = correctedText.replace(/\.\s+([a-z])/g, (match, letter) => {
-      return '. ' + letter.toUpperCase();
-    });
-
-    // 3. Capitalizar nombres propios comunes en español
-    const properNouns = [
-      // Nombres comunes
-      'juan', 'maría', 'carlos', 'ana', 'luis', 'carmen', 'josé', 'antonio', 'manuel', 'francisco',
-      'david', 'daniel', 'rafael', 'miguel', 'alejandro', 'fernando', 'sergio', 'pablo', 'jorge',
-      'andrés', 'alberto', 'roberto', 'ricardo', 'eduardo', 'raúl', 'víctor', 'ángel', 'ramón',
-      
-      // Apellidos comunes
-      'garcía', 'rodríguez', 'gonzález', 'fernández', 'lópez', 'martínez', 'sánchez', 'pérez',
-      'gómez', 'martín', 'jiménez', 'ruiz', 'hernández', 'díaz', 'moreno', 'álvarez', 'muñoz',
-      'romero', 'navarro', 'torres', 'domínguez', 'vázquez', 'ramos', 'gil', 'ramírez', 'serrano',
-      
-      // Lugares comunes
-      'españa', 'madrid', 'barcelona', 'valencia', 'sevilla', 'bilbao', 'málaga', 'murcia',
-      'palma', 'gran canaria', 'alicante', 'córdoba', 'valladolid', 'vigo', 'gijón', 'eixample',
-      'hospitalet', 'coruña', 'vitoria', 'granada', 'elche', 'oviedo', 'santa cruz', 'pamplona',
-      'almería', 'leganés', 'donostia', 'burgos', 'albacete', 'santander', 'castellón', 'alcorcón',
-      
-      // Países y continentes
-      'méxico', 'argentina', 'colombia', 'perú', 'venezuela', 'chile', 'ecuador', 'guatemala',
-      'cuba', 'bolivia', 'república dominicana', 'honduras', 'paraguay', 'nicaragua', 'costa rica',
-      'panamá', 'uruguay', 'salvador', 'europa', 'américa', 'asia', 'áfrica', 'oceanía',
-      
-      // Días de la semana
-      'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
-      
-      // Meses
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto',
-      'septiembre', 'octubre', 'noviembre', 'diciembre',
-      
-      // Tecnologías comunes
-      'javascript', 'typescript', 'python', 'java', 'react', 'angular', 'vue', 'node',
-      'express', 'mongodb', 'mysql', 'postgresql', 'firebase', 'aws', 'azure', 'google',
-      'microsoft', 'apple', 'facebook', 'twitter', 'instagram', 'linkedin', 'github',
-      'gitlab', 'bitbucket', 'docker', 'kubernetes', 'jenkins', 'terraform', 'ansible'
-    ];
-
-    properNouns.forEach(noun => {
-      const regex = new RegExp(`\\b${noun}\\b`, 'gi');
-      correctedText = correctedText.replace(regex, (match) => {
-        return match.charAt(0).toUpperCase() + match.slice(1).toLowerCase();
-      });
-    });
-
-    // 4. Corregir espacios múltiples
-    correctedText = correctedText.replace(/\s+/g, ' ');
-
-    // 5. Agregar punto final si no tiene puntuación
-    if (!/[.!?]$/.test(correctedText) && correctedText.length > 0) {
-      correctedText += '.';
+  const correctTextWithAI = async (text: string): Promise<string> => {
+    try {
+      const { corrected } = await enhanceSubtaskText({ text });
+      return corrected || text;
+    } catch {
+      return text;
     }
-
-    // 6. Corregir espacios antes de signos de puntuación
-    correctedText = correctedText.replace(/\s+([,.!?;:])/g, '$1');
-
-    // 7. Agregar espacio después de signos de puntuación si no lo hay
-    correctedText = correctedText.replace(/([,.!?;:])([A-Za-z])/g, '$1 $2');
-
-    // 8. Corregir mayúsculas después de signos de exclamación e interrogación
-    correctedText = correctedText.replace(/([!?])\s+([a-z])/g, (match, punct, letter) => {
-      return punct + ' ' + letter.toUpperCase();
-    });
-
-    return correctedText;
   };
-  
-  const handleAddSubtask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newSubtask.trim()) return;
-    
-    // Corregir el texto antes de guardarlo
-    const correctedTitle = correctText(newSubtask);
-    
-    // Mostrar indicador si el texto fue corregido
-    if (correctedTitle !== newSubtask.trim()) {
-      setWasTextCorrected(true);
-      setTimeout(() => setWasTextCorrected(false), 3000); // Ocultar después de 3 segundos
+
+  const handleAddSubtask = async () => {
+    if (!user || isLoadingSubtask) return;
+    const rawText = newSubtask.trim();
+    if (!rawText) return;
+
+    // 🔥 Muestra loader inmediatamente
+    flushSync(() => setIsLoadingSubtask(true));
+
+    try {
+      const correctedTitle = await correctTextWithAI(rawText);
+      if (!correctedTitle.trim()) return;
+
+      if (correctedTitle !== rawText) {
+        setWasTextCorrected(true);
+        setTimeout(() => setWasTextCorrected(false), 3000);
+      }
+
+      const subtasksRef = ref(db, `projects/${projectId}/tasks/${task.id}/subtasks`);
+      const newSubtaskRef = push(subtasksRef);
+      await set(newSubtaskRef, { title: correctedTitle, done: false });
+
+      setNewSubtask("");
+
+    } catch (err) {
+      console.error("Error al agregar subtarea:", err);
+    } finally {
+      setTimeout(() => setIsLoadingSubtask(false), 600);
     }
-    
-    const subtasksRef = ref(db, `projects/${projectId}/tasks/${task.id}/subtasks`);
-    const newSubtaskRef = push(subtasksRef);
-    await set(newSubtaskRef, { title: correctedTitle, done: false });
-    setNewSubtask("");
-  }
+  };
 
-  // Vista Kanban minimalista
-  if (isKanbanView) {
-    return (
-      <Collapsible open={expanded} onOpenChange={setIsExpanded}>
-        <Card className="border border-border hover:border-primary/40 transition-colors">
-          <CollapsibleTrigger asChild>
-            <CardContent className="p-3 cursor-pointer">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-sm leading-tight truncate pr-2 flex-1">{task.title}</h3>
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                          <MoreVertical className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={onEdit}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          <span>Editar</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Eliminar</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {statusIcons[task.status]}
-                  <span className="text-xs text-muted-foreground">{statusText[task.status]}</span>
-                </div>
-                
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium">{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} className="h-1" />
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleTrigger>
-
-          <CollapsibleContent>
-            <CardContent className="pt-0 px-3 pb-3">
-              <div className="space-y-4">
-                {task.description && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Descripción</h4>
-                    <CardDescription className="text-xs">{task.description}</CardDescription>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-2 text-xs">
-                  <div>
-                    <span className="font-medium text-muted-foreground">Inicio:</span>
-                    <p>{format(new Date(task.startDate), "d MMM, yyyy", { locale: es })}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-muted-foreground">Fin:</span>
-                    <p>{format(new Date(task.endDate), "d MMM, yyyy", { locale: es })}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">Estado</h4>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex items-center gap-1 h-6 text-xs">
-                          {statusIcons[task.status]}
-                          {statusText[task.status]}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {(Object.keys(statusText) as TaskStatus[]).map((status) => (
-                          <DropdownMenuItem key={status} onClick={() => handleStatusChange(status)}>
-                            {statusIcons[status]}
-                            <span className="ml-2">{statusText[status]}</span>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-muted-foreground">Subtareas ({subtasks.length})</h4>
-                    {wasTextCorrected && (
-                      <span className="text-xs text-green-600 bg-green-50 dark:bg-green-950/20 px-2 py-1 rounded">
-                        ✓ Texto corregido automáticamente
-                      </span>
-                    )}
-                  </div>
-                  {subtasks.map((subtask) => (
-                    <SubtaskItem key={subtask.id} subtask={subtask} taskId={task.id} projectId={projectId} />
-                  ))}
-                  <form onSubmit={handleAddSubtask} className="flex gap-2">
-                    <Input
-                      placeholder="Añadir subtarea (se corregirá automáticamente)..."
-                      value={newSubtask}
-                      onChange={(e) => setNewSubtask(e.target.value)}
-                      className="h-7 text-xs"
-                    />
-                    <Button type="submit" size="icon" variant="ghost" className="h-7 w-7 shrink-0">
-                      <Plus className="h-3 w-3" />
-                      <span className="sr-only">Añadir subtarea</span>
-                    </Button>
-                  </form>
-                </div>
-
-                {task.assignees && task.assignees.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">Asignados:</span>
-                    <div className="flex items-center -space-x-1">
-                      <TooltipProvider>
-                        {task.assignees.map(email => (
-                          <Tooltip key={email}>
-                            <TooltipTrigger asChild>
-                              <Avatar className="h-6 w-6 border border-background">
-                                <AvatarFallback className="text-xs">{getInitials(email)}</AvatarFallback>
-                              </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{email}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-    );
-  }
-
+  // --- UI principal ---
   return (
     <Collapsible open={expanded} onOpenChange={setIsExpanded}>
       <Card className={isCompactView ? "border-l-4 border-l-primary/20" : ""}>
         <CollapsibleTrigger asChild>
-          <CardHeader className={`cursor-pointer hover:bg-muted/50 transition-colors ${isCompactView ? "py-3" : ""}`}>
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex justify-between items-start">
               <div className="flex-1 flex items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -357,17 +169,12 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
                   {statusIcons[task.status]}
                 </div>
                 <div className="flex-1">
-                  <CardTitle className={`font-headline ${isCompactView ? "text-base" : "text-lg"}`}>{task.title}</CardTitle>
-                  <div className={`flex items-center gap-4 ${isCompactView ? "mt-0.5" : "mt-1"}`}>
-                    <span className={`${isCompactView ? "text-xs" : "text-sm"} text-muted-foreground`}>{statusText[task.status]}</span>
-                    <span className={`${isCompactView ? "text-xs" : "text-sm"} text-muted-foreground`}>{Math.round(progress)}% completado</span>
-                    {subtasks.length > 0 && (
-                      <span className={`${isCompactView ? "text-xs" : "text-sm"} text-muted-foreground`}>
-                        {subtasks.filter(st => st.done).length}/{subtasks.length} subtareas
-                      </span>
-                    )}
-                    <div className={`${isCompactView ? "text-xs" : "text-xs"} text-muted-foreground flex items-center gap-1`}>
-                      <Calendar className="w-3 h-3"/>
+                  <CardTitle className="font-headline text-lg">{task.title}</CardTitle>
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    <span>{statusText[task.status]}</span>
+                    <span>{Math.round(progress)}% completado</span>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
                       {format(new Date(task.endDate), "d MMM", { locale: es })}
                     </div>
                   </div>
@@ -376,7 +183,7 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
               <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className={`${isCompactView ? "h-7" : "h-8"}`}>
+                    <Button variant="ghost" size="sm">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -393,12 +200,10 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
                 </DropdownMenu>
               </div>
             </div>
-            <div className="w-full">
-              <Progress value={progress} className={`${isCompactView ? "h-1" : "h-1.5"}`} />
-            </div>
+            <Progress value={progress} className="h-1.5 mt-2" />
           </CardHeader>
         </CollapsibleTrigger>
-        
+
         <CollapsibleContent>
           <CardContent>
             <div className="space-y-4">
@@ -409,67 +214,61 @@ export function TaskCard({ task, projectId, onEdit, onDelete, forceExpanded = fa
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-muted-foreground">Inicio:</span>
-                  <p>{format(new Date(task.startDate), "d MMM, yyyy", { locale: es })}</p>
-                </div>
-                <div>
-                  <span className="font-medium text-muted-foreground">Fin:</span>
-                  <p>{format(new Date(task.endDate), "d MMM, yyyy", { locale: es })}</p>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Estado</h4>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="flex items-center gap-2">
-                        {statusIcons[task.status]}
-                        {statusText[task.status]}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {(Object.keys(statusText) as TaskStatus[]).map((status) => (
-                        <DropdownMenuItem key={status} onClick={() => handleStatusChange(status)}>
-                          {statusIcons[status]}
-                          <span className="ml-2">{statusText[status]}</span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
+              {/* Subtareas */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium text-muted-foreground">Subtareas ({subtasks.length})</h4>
                   {wasTextCorrected && (
                     <span className="text-xs text-green-600 bg-green-50 dark:bg-green-950/20 px-2 py-1 rounded">
-                      ✓ Texto corregido automáticamente
+                      ✓ Subtarea agregada.
                     </span>
                   )}
                 </div>
+
                 {subtasks.map((subtask) => (
                   <SubtaskItem key={subtask.id} subtask={subtask} taskId={task.id} projectId={projectId} />
                 ))}
-                <form onSubmit={handleAddSubtask} className="flex gap-2">
-                  <Input
-                    placeholder="Añadir subtarea (se corregirá automáticamente)..."
-                    value={newSubtask}
-                    onChange={(e) => setNewSubtask(e.target.value)}
-                    className="h-8"
-                  />
-                  <Button type="submit" size="icon" variant="ghost" className="h-8 w-8 shrink-0">
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Añadir subtarea</span>
-                  </Button>
-                </form>
+
+                <div className="relative min-h-[36px]">
+                  <div
+                    className={`absolute inset-0 transition-opacity duration-300 ${isLoadingSubtask ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+                  >
+                    <div className="flex gap-2 items-center w-full">
+                      <Input
+                        placeholder="Escribe una subtarea..."
+                        value={newSubtask}
+                        onChange={(e) => setNewSubtask(e.target.value)}
+                        className="h-8 text-xs flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        className="h-8 px-3 text-xs font-medium flex items-center gap-1"
+                        onClick={handleAddSubtask}
+                        disabled={isLoadingSubtask || !newSubtask.trim()}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Agregar
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`absolute inset-0 flex items-center justify-between px-3 py-2 rounded-md bg-muted/40 border border-border transition-opacity duration-300 ${isLoadingSubtask ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground italic">
+                        Agregando Subtarea...
+                      </span>
+                    </div>
+                    <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
-          
+
           {task.assignees && task.assignees.length > 0 && (
             <CardFooter>
               <div className="flex items-center gap-2">
