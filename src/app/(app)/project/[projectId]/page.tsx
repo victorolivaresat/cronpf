@@ -12,7 +12,7 @@ import ProjectLoading from "./loading";
 import { ProjectHeader } from "@/components/project/project-header";
 import { TaskList } from "@/components/project/task-list";
 import { GanttChart } from "@/components/project/gantt-chart/gantt-chart";
-import { AiInsightsButton } from "@/components/project/ai-insights-button";
+// Eliminado import de AiInsightsButton por eliminación de AI insights
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { TaskForm } from "@/components/project/task-form";
@@ -180,7 +180,6 @@ export default function ProjectPage() {
     <div className="container py-8">
       <ProjectHeader project={project}>
         <div className="flex items-center gap-2">
-            <AiInsightsButton project={project} />
             {isOwner && (
               <>
                  <Dialog open={isMembersFormOpen} onOpenChange={setIsMembersFormOpen}>
