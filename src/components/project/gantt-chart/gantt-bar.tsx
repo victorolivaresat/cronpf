@@ -23,9 +23,9 @@ type GanttBarProps = {
 };
 
 const statusColors: Record<Task['status'], string> = {
-    pending: 'bg-muted/70 border-muted-foreground/50 text-foreground',
+    'pending': 'bg-muted/70 border-muted-foreground/50 text-foreground',
     'in-progress': 'bg-primary/70 border-primary/50 text-primary-foreground',
-    completed: 'bg-green-500/70 border-green-500/50 text-white',
+    'completed': 'bg-green-500/70 border-green-500/50 text-white',
 };
 
 export function GanttBar({ task, projectStartDate, totalDays, index, dayWidth }: GanttBarProps) {

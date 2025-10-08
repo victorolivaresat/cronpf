@@ -2,15 +2,49 @@
 "use client";
 
 import { useMemo } from "react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from "recharts";
+// Componente de leyenda personalizada para traducir los labels
+function CustomLegend({ payload }: { payload?: any[] }) {
+  if (!payload) return null;
+  return (
+    <ul className="flex gap-4 mt-2 justify-center items-center w-full">
+      {payload.map((entry) => {
+        const key = entry.dataKey as keyof typeof chartConfig;
+        return (
+          <li key={entry.dataKey} className="flex items-center gap-1 text-xs text-slate-500">
+            <span style={{ background: entry.color, width: 12, height: 12, display: 'inline-block', borderRadius: 2 }} />
+            {chartConfig[key]?.label || entry.value}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Task } from "@/lib/types";
 import { ChartConfig, ChartContainer } from "@/components/ui/chart";
+
 
 type UserTasksChartProps = {
   tasks: Task[];
   userMap: Record<string, string>; // email -> name
 };
+
+// Config global para acceso desde leyenda
+const chartConfig = {
+  "pending": {
+    label: "Pendiente",
+    color: "hsl(var(--chart-1))",
+  },
+  "in-progress": {
+    label: "En Progreso",
+    color: "hsl(var(--chart-2))",
+  },
+  "completed": {
+    label: "Completado",
+    color: "hsl(var(--chart-3))",
+  },
+} satisfies ChartConfig;
 
 export function UserTasksChart({ tasks, userMap }: UserTasksChartProps) {
   const chartData = useMemo(() => {
@@ -32,21 +66,6 @@ export function UserTasksChart({ tasks, userMap }: UserTasksChartProps) {
       ...statuses,
     }));
   }, [tasks, userMap]);
-
-  const chartConfig = {
-    pending: {
-      label: "Pendiente",
-      color: "hsl(var(--chart-1))",
-    },
-    "in-progress": {
-      label: "En Progreso",
-      color: "hsl(var(--chart-2))",
-    },
-    completed: {
-      label: "Completado",
-      color: "hsl(var(--chart-3))",
-    },
-  } satisfies ChartConfig;
 
   if (chartData.length === 0) {
     return (
@@ -77,8 +96,8 @@ export function UserTasksChart({ tasks, userMap }: UserTasksChartProps) {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={10}
-                fontSize={12}
-                angle={-15}
+                fontSize={10}
+                angle={0}
                 textAnchor="end"
                 height={50}
                 interval={0}
@@ -91,7 +110,7 @@ export function UserTasksChart({ tasks, userMap }: UserTasksChartProps) {
                   borderColor: 'hsl(var(--border))'
                 }}
               />
-              <Legend />
+              <Legend content={<CustomLegend />} />
               <Bar dataKey="pending" stackId="a" fill={chartConfig.pending.color} radius={[0, 0, 0, 0]} />
               <Bar dataKey="in-progress" stackId="a" fill={chartConfig['in-progress'].color} />
               <Bar dataKey="completed" stackId="a" fill={chartConfig.completed.color} radius={[4, 4, 0, 0]} />
