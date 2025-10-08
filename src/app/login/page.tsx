@@ -1,6 +1,5 @@
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { Logo } from "@/components/layout/logo";
 import {
   Card,
   CardContent,
