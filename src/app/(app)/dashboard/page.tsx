@@ -18,6 +18,7 @@ import { DashboardSummary } from "@/components/dashboard/dashboard-summary";
 import { UserTasksChart } from "@/components/dashboard/user-tasks-chart";
 import { UpcomingTasks } from "@/components/dashboard/upcoming-tasks";
 import { ActionConfirmationDialog } from "@/components/dashboard/action-confirmation-dialog";
+import { ProjectsSection } from "@/components/dashboard/projects-section";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -292,31 +293,14 @@ export default function DashboardPage() {
             <UpcomingTasks tasks={allTasks} />
           </div>
 
-          <div>
-            <h2 className="font-headline text-2xl font-bold mb-4">Tus Proyectos</h2>
-            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {displayedProjects.map((project) => (
-                <ProjectCard 
-                  key={project.id} 
-                  project={project} 
-                  onDelete={handleDeleteProject}
-                  currentUserId={user?.uid}
-                />
-              ))}
-            </div>
-            
-            {hasMoreProjects && (
-              <div className="flex justify-center mt-6">
-                <Button 
-                  variant="outline" 
-                  onClick={loadMoreProjects}
-                  className="px-8"
-                >
-                  Cargar más proyectos
-                </Button>
-              </div>
-            )}
-          </div>
+          <ProjectsSection
+            projects={projects}
+            visibleProjects={visibleProjects}
+            hasMoreProjects={hasMoreProjects}
+            onLoadMore={loadMoreProjects}
+            onDeleteProject={handleDeleteProject}
+            currentUserId={user?.uid}
+          />
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center text-center py-16 px-4 border-2 border-dashed rounded-lg">
